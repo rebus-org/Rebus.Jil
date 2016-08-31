@@ -1,4 +1,4 @@
-# Rebus.TODO
+# Rebus.Jil
 
 Provides a [Jil](https://github.com/kevin-montrose/Jil)-based message serializer for [Rebus](https://github.com/rebus-org/Rebus).
 
