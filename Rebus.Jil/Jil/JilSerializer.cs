@@ -14,16 +14,12 @@ namespace Rebus.Jil
     /// <summary>
     /// Implementation of <see cref="ISerializer"/> that uses Jil to do its thing.
     /// </summary>
-    public class JilSerializer : ISerializer
+    class JilSerializer : ISerializer
     {
         const string JsonUtf8ContentType = "application/json;charset=utf-8";
         static readonly Encoding Encoding = Encoding.UTF8;
-        private readonly Options _jilOptions;
+        readonly Options _jilOptions;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="jilOptions"></param>
         public JilSerializer(Options jilOptions = null)
         {
             _jilOptions = jilOptions;
