@@ -48,7 +48,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="jil" Version="2.15.0" />
-    <PackageReference Include="rebus" Version="4.0.0-b05" />
+    <PackageReference Include="rebus" Version="4.0.0-b09" />
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
