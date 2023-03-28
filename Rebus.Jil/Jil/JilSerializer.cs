@@ -9,79 +9,73 @@ using Rebus.Extensions;
 using Rebus.Messages;
 using Rebus.Serialization;
 
-namespace Rebus.Jil
+namespace Rebus.Jil;
+
+/// <summary>
+/// Implementation of <see cref="ISerializer"/> that uses Jil to do its thing.
+/// </summary>
+class JilSerializer : ISerializer
 {
-    /// <summary>
-    /// Implementation of <see cref="ISerializer"/> that uses Jil to do its thing.
-    /// </summary>
-    class JilSerializer : ISerializer
+    const string JsonUtf8ContentType = "application/json;charset=utf-8";
+    static readonly Encoding Encoding = Encoding.UTF8;
+    readonly Options _jilOptions;
+
+    public JilSerializer(Options jilOptions = null)
     {
-        const string JsonUtf8ContentType = "application/json;charset=utf-8";
-        static readonly Encoding Encoding = Encoding.UTF8;
-        readonly Options _jilOptions;
+        _jilOptions = jilOptions;
+    }
 
-        public JilSerializer(Options jilOptions = null)
+    /// <summary>
+    /// Serializes the given <see cref="Message"/> into a <see cref="TransportMessage"/>
+    /// </summary>
+    public async Task<TransportMessage> Serialize(Message message)
+    {
+        var body = message.Body;
+        var jsonText = JSON.Serialize(body, _jilOptions);
+        var bytes = Encoding.GetBytes(jsonText);
+        var headers = message.Headers.Clone();
+        var messageType = body.GetType();
+        headers[Headers.Type] = messageType.GetSimpleAssemblyQualifiedName();
+        headers[Headers.ContentType] = JsonUtf8ContentType;
+        return new TransportMessage(headers, bytes);
+    }
+
+    /// <summary>
+    /// Deserializes the given <see cref="TransportMessage"/> back into a <see cref="Message"/>
+    /// </summary>
+    public async Task<Message> Deserialize(TransportMessage transportMessage)
+    {
+        var contentType = transportMessage.Headers.GetValue(Headers.ContentType);
+
+        if (contentType != JsonUtf8ContentType)
         {
-            _jilOptions = jilOptions;
+            throw new FormatException(
+                $"Unknown content type: '{contentType}' - must be '{JsonUtf8ContentType}' for the JSON serialier to work");
         }
 
-        /// <summary>
-        /// Serializes the given <see cref="Message"/> into a <see cref="TransportMessage"/>
-        /// </summary>
-        public async Task<TransportMessage> Serialize(Message message)
+        var headers = transportMessage.Headers.Clone();
+        var messageType = GetMessageType(headers);
+        var bodyString = Encoding.GetString(transportMessage.Body);
+        var bodyObject = messageType != null 
+            ? JSON.Deserialize(bodyString, messageType, _jilOptions)
+            : JSON.DeserializeDynamic(bodyString, _jilOptions);
+        return new Message(headers, bodyObject);
+    }
+
+    static Type GetMessageType(IDictionary<string, string> headers)
+    {
+        if (!headers.TryGetValue(Headers.Type, out var messageTypeString))
         {
-            var body = message.Body;
-            var jsonText = JSON.Serialize(body, _jilOptions);
-            var bytes = Encoding.GetBytes(jsonText);
-            var headers = message.Headers.Clone();
-            var messageType = body.GetType();
-            headers[Headers.Type] = messageType.GetSimpleAssemblyQualifiedName();
-            headers[Headers.ContentType] = JsonUtf8ContentType;
-            return new TransportMessage(headers, bytes);
+            return null;
         }
 
-        /// <summary>
-        /// Deserializes the given <see cref="TransportMessage"/> back into a <see cref="Message"/>
-        /// </summary>
-        public async Task<Message> Deserialize(TransportMessage transportMessage)
-        {
-            var contentType = transportMessage.Headers.GetValue(Headers.ContentType);
+        var type = Type.GetType(messageTypeString, false);
 
-            if (contentType != JsonUtf8ContentType)
-            {
-                throw new FormatException(
-                    $"Unknown content type: '{contentType}' - must be '{JsonUtf8ContentType}' for the JSON serialier to work");
-            }
+        if (type != null) return type;
 
-            var headers = transportMessage.Headers.Clone();
-            var messageType = GetMessageType(headers);
-            var bodyString = Encoding.GetString(transportMessage.Body);
-            var bodyObject = messageType != null 
-                ? JSON.Deserialize(bodyString, messageType, _jilOptions)
-                : JSON.DeserializeDynamic(bodyString, _jilOptions);
-            return new Message(headers, bodyObject);
-        }
+        var message = $"Could not find .NET type matching '{messageTypeString}' - please be sure that the correct message" +
+                      " assembly is available when handling messages";
 
-        static Type GetMessageType(IDictionary<string, string> headers)
-        {
-            string messageTypeString;
-            if (!headers.TryGetValue(Headers.Type, out messageTypeString))
-            {
-                return null;
-            }
-
-            var type = Type.GetType(messageTypeString, false);
-
-            if (type == null)
-            {
-                var message =
-                    $"Could not find .NET type matching '{messageTypeString}' - please be sure that the correct message" +
-                    " assembly is available when handling messages";
-
-                throw new SerializationException(message);
-            }
-
-            return type;
-        }
+        throw new SerializationException(message);
     }
 }

@@ -2,94 +2,93 @@
 using NUnit.Framework;
 using Rebus.Messages;
 
-namespace Rebus.Jil.Tests
+namespace Rebus.Jil.Tests;
+
+[TestFixture]
+public class TestJilCapabilities
 {
-    [TestFixture]
-    public class TestJilCapabilities
+    [Test, Ignore("How did this ever work?")]
+    public void CanRoundtripClassWithConstructorParameters()
     {
-        [Test, Ignore("How did this ever work?")]
-        public void CanRoundtripClassWithConstructorParameters()
-        {
-            var msg = Roundtrip(new AwesomeImmutableMessage("yo!!", new RealValueType(23, "dings")));
+        var msg = Roundtrip(new AwesomeImmutableMessage("yo!!", new RealValueType(23, "dings")));
 
-            Assert.That(msg.Value, Is.EqualTo("yo!!"));
-            Assert.That(msg.RealValueType.SomeValue, Is.EqualTo(23));
-            Assert.That(msg.RealValueType.SomeUnit, Is.EqualTo("dings"));
+        Assert.That(msg.Value, Is.EqualTo("yo!!"));
+        Assert.That(msg.RealValueType.SomeValue, Is.EqualTo(23));
+        Assert.That(msg.RealValueType.SomeUnit, Is.EqualTo("dings"));
+    }
+
+    class AwesomeImmutableMessage
+    {
+        AwesomeImmutableMessage()
+        {
         }
 
-        class AwesomeImmutableMessage
+        public AwesomeImmutableMessage(string value, RealValueType realValueType)
         {
-            AwesomeImmutableMessage()
+            Value = value;
+            RealValueType = realValueType;
+        }
+
+        public string Value { get; }
+        public RealValueType RealValueType { get; }
+    }
+
+    class RealValueType
+    {
+        RealValueType()
+        {
+        }
+
+        public RealValueType(int someValue, string someUnit)
+        {
+            SomeValue = someValue;
+            SomeUnit = someUnit;
+        }
+
+        public int SomeValue { get; }
+        public string SomeUnit { get; }
+    }
+
+    [Test]
+    public void CanRoundtripSimpleClass()
+    {
+        var msg = Roundtrip(new SimpleClass
+        {
+            Decimal = 23.4M,
+            Int = 4,
+            String = "hej",
+            SimpleEmbeddedObject = new SimpleEmbeddedObject
             {
+                Text = "hej igen"
             }
+        });
 
-            public AwesomeImmutableMessage(string value, RealValueType realValueType)
-            {
-                Value = value;
-                RealValueType = realValueType;
-            }
+        Assert.That(msg.Decimal, Is.EqualTo(23.4M));
+        Assert.That(msg.Int, Is.EqualTo(4));
+        Assert.That(msg.String, Is.EqualTo("hej"));
+        Assert.That(msg.SimpleEmbeddedObject.Text, Is.EqualTo("hej igen"));
+    }
 
-            public string Value { get; }
-            public RealValueType RealValueType { get; }
-        }
+    static TMessage Roundtrip<TMessage>(TMessage message) where TMessage : class
+    {
+        var serializer = new JilSerializer();
+        var roundtrippedMessage =
+            serializer.Deserialize(serializer.Serialize(new Message(new Dictionary<string, string>(), message)).Result)
+                .Result;
 
-        class RealValueType
-        {
-            RealValueType()
-            {
-            }
+        return roundtrippedMessage.Body as TMessage;
+    }
 
-            public RealValueType(int someValue, string someUnit)
-            {
-                SomeValue = someValue;
-                SomeUnit = someUnit;
-            }
+    class SimpleClass
+    {
+        public int Int { get; set; }
+        public decimal Decimal { get; set; }
+        public string String { get; set; }
+        public SimpleEmbeddedObject SimpleEmbeddedObject { get; set; }
+    }
 
-            public int SomeValue { get; }
-            public string SomeUnit { get; }
-        }
-
-        [Test]
-        public void CanRoundtripSimpleClass()
-        {
-            var msg = Roundtrip(new SimpleClass
-            {
-                Decimal = 23.4M,
-                Int = 4,
-                String = "hej",
-                SimpleEmbeddedObject = new SimpleEmbeddedObject
-                {
-                    Text = "hej igen"
-                }
-            });
-
-            Assert.That(msg.Decimal, Is.EqualTo(23.4M));
-            Assert.That(msg.Int, Is.EqualTo(4));
-            Assert.That(msg.String, Is.EqualTo("hej"));
-            Assert.That(msg.SimpleEmbeddedObject.Text, Is.EqualTo("hej igen"));
-        }
-
-        static TMessage Roundtrip<TMessage>(TMessage message) where TMessage : class
-        {
-            var serializer = new JilSerializer();
-            var roundtrippedMessage =
-                serializer.Deserialize(serializer.Serialize(new Message(new Dictionary<string, string>(), message)).Result)
-                    .Result;
-
-            return roundtrippedMessage.Body as TMessage;
-        }
-
-        class SimpleClass
-        {
-            public int Int { get; set; }
-            public decimal Decimal { get; set; }
-            public string String { get; set; }
-            public SimpleEmbeddedObject SimpleEmbeddedObject { get; set; }
-        }
-
-        class SimpleEmbeddedObject
-        {
-            public string Text { get; set; }
-        }
+    class SimpleEmbeddedObject
+    {
+        public string Text { get; set; }
     }
 }
