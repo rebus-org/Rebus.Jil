@@ -28,6 +28,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="jil" Version="2.17.0" />
-		<PackageReference Include="rebus" Version="8.0.0-alpha01" />
+		<PackageReference Include="rebus" Version="8.0.1" />
 	</ItemGroup>
 </Project>
